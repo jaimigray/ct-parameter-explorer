@@ -44,6 +44,13 @@ button{font-family:inherit;color:inherit}
 #viewer{display:flex;flex-direction:column;min-width:0;padding:14px 16px 10px;gap:10px;overflow:hidden;}
 .titlebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .titlebar h1{font-size:15px;font-weight:600;letter-spacing:0.01em;}
+.badge.desktop{border-color:rgba(224,160,74,0.45);color:var(--warn);}
+#deviceNote{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;padding:56px 18px 18px;background:rgba(11,8,20,0.9);}
+#deviceNote.show{display:flex;}
+#deviceNote .box{max-width:420px;background:var(--panel);border:1px solid rgba(224,160,74,0.55);border-radius:12px;padding:22px 22px 20px;box-shadow:0 10px 40px rgba(0,0,0,0.55);}
+#deviceNote h2{font-size:18px;font-weight:600;margin-bottom:10px;color:var(--warn);}
+#deviceNote p{font-size:14px;line-height:1.6;color:#d6cfe8;margin-bottom:10px;}
+#deviceNote button{margin-top:8px;width:100%;padding:12px;background:rgba(94,234,212,0.18);border:1px solid var(--accent2);border-radius:8px;color:var(--accent2);font-size:14px;font-weight:600;cursor:pointer;}
 .badge{font-size:9px;font-family:var(--mono);letter-spacing:0.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.1);color:var(--muted);padding:4px 10px;border-radius:100px;white-space:nowrap;}
 .toolbar{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;}
 .tset{display:flex;align-items:center;gap:8px;}
@@ -163,12 +170,22 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
 
 <div id="fatal"></div>
 
+<div id="deviceNote" role="dialog" aria-modal="true" aria-labelledby="deviceNoteTitle">
+  <div class="box">
+    <h2 id="deviceNoteTitle">Please use a computer</h2>
+    <p>The CT Parameter Explorer is designed for a computer (PC, Mac or laptop) with a mouse and a large screen.</p>
+    <p>It isn&rsquo;t built for phones or tablets, so the images, controls and zoom may not work well there.</p>
+    <button type="button" id="deviceNoteOk">Continue anyway</button>
+  </div>
+</div>
+
 <div id="app">
   <main id="viewer">
     <div class="titlebar">
       <h1>CT Parameter Explorer</h1>
       <span class="badge">Procyon lotor · raccoon skull</span>
       <span class="badge" id="badgeLevel"></span>
+      <span class="badge desktop" title="This tool is designed for a computer, not for phones or tablets">Best on a computer</span>
     </div>
     <div class="toolbar">
       <div class="tset">
@@ -672,6 +689,17 @@ async function init() {
   const ro = new ResizeObserver(sizeStage); ro.observe(wrap); ro.observe($('pickers'));
   setWL(0.69, 1.45, 60); setTool('pan'); setMode('side'); update();
 }
+// Phones and tablets: ask people to use a computer. Shown for small or touch-first screens; "Continue anyway" dismisses it for the session.
+(function deviceNote() {
+  const note = document.getElementById('deviceNote'), key = 'ctExplorerDeviceNoteDismissed';
+  let dismissed = false; try { dismissed = sessionStorage.getItem(key) === '1'; } catch (e) {}
+  const mobile = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+  if (!mobile || dismissed) return;
+  const close = () => { note.classList.remove('show'); try { sessionStorage.setItem(key, '1'); } catch (e) {} };
+  note.classList.add('show');
+  document.getElementById('deviceNoteOk').onclick = close;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
 init();
 </script>
 </body>
