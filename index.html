@@ -174,7 +174,7 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
       <div class="tset">
         <span class="tlabel">Display</span>
         <div class="tgroup">
-          <button class="tbtn" data-wl="0.48,1.04,60" title="The whole range, with the dark end brightened and the air shown as dark gray (not black) so faint noise and streaks stay visible">Full range</button>
+          <button class="tbtn" data-wl="0.69,1.45,60" title="The whole range: the white point sits above the brightest bone so differences within the bone show, and the air is dark gray (not black) so faint noise and streaks stay visible">Full range</button>
           <button class="tbtn" data-wl="0.72,0.55,0" title="Zooms in on the bright end to separate dense bone from thin bone">Bone detail</button>
           <button class="tbtn" data-wl="0.08,0.16,0" title="Zooms in on the dark end so noise, streaks and rings are easy to see (bone is saturated)">Show noise &amp; streaks</button>
         </div>
@@ -194,6 +194,7 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
           <button class="tbtn" id="toolR2"><span class="reg2">&#9632;</span> Region 2</button>
         </div>
         <button class="tbtn solo" id="zoomReset">Reset zoom</button>
+        <button class="tbtn solo on" id="labelsBtn" title="Show or hide the label on the aluminum rod">Labels</button>
       </div>
     </div>
     <div id="stageWrap">
@@ -239,7 +240,7 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
 
     <section class="sec">
       <h2>Display</h2>
-      <p class="hint" style="margin-bottom:8px">The Full range, Bone detail and Show noise &amp; streaks buttons are above the images. Fine-tune the display here. <b>Dark areas</b> brightens the dark end so faint noise and streaks in the air stay visible without clipping the bone; set it to 0% for a plain straight-line display.</p>
+      <p class="hint" style="margin-bottom:8px">The Full range, Bone detail and Show noise &amp; streaks buttons are above the images. Fine-tune the display here. <b>Dark areas</b> lifts only the very dark end (the air) so faint noise and streaks stay visible, and leaves the bone unchanged; set it to 0% for a plain straight-line display.</p>
       <div class="wl">
         <label for="wlC">Level</label><input type="range" id="wlC" min="0" max="120" value="50"><output id="wlCo"></output>
         <label for="wlW">Width</label><input type="range" id="wlW" min="2" max="150" value="100"><output id="wlWo"></output>
@@ -302,8 +303,8 @@ const EXPLAIN = {
 /* ---------------- state ---------------- */
 const $ = id => document.getElementById(id);
 const S = {
-  level:null, sel:null, ref:null, last:null, mode:'side', tool:'pan', wipe:0.5,
-  wl:{c:0.48,w:1.04}, boost:60, norm:false, view:{z:1,tx:0,ty:0}, roi:{1:null,2:null}
+  level:null, sel:null, ref:null, last:null, mode:'side', tool:'pan', wipe:0.5, labels:true,
+  wl:{c:0.69,w:1.45}, boost:60, norm:false, view:{z:1,tx:0,ty:0}, roi:{1:null,2:null}
 };
 let MAN = null, SCANS = [], SIZE = 960;
 const cache = new Map();
@@ -346,16 +347,18 @@ function loadSlice(id, level) {
 }
 
 /* ---------------- rendering ---------------- */
-const darkAreaCurve = () => 1 - 0.0075 * S.boost;      // boost 0 = straight line, 60 = gamma 0.55 (the default), 100 = gamma 0.25
+// "Dark areas" lifts only the very dark end (the air) and leaves the bone range untouched: out = t * (1 + gain * exp(-t / 0.08)).
+// gain 0 = straight line; 60% (default) gives air about 11% gray; the curve stays rising up to 100%.
+const darkAreaGain = () => 0.0693 * S.boost;
 function paint(which, d, lo, hi) {
   const cv = $('c'+which);
   if (!ctxs[which]) { const c = cv.getContext('2d'); ctxs[which] = { c, img:c.createImageData(SIZE,SIZE) }; ctxs[which].u32 = new Uint32Array(ctxs[which].img.data.buffer); }
   const { c, img, u32 } = ctxs[which];
   const span = hi - lo, t0 = lo + (S.wl.c - S.wl.w/2)*span, t1 = lo + (S.wl.c + S.wl.w/2)*span;
-  const lut = new Uint32Array(65536), den = (t1 - t0) || 1, curve = darkAreaCurve();   // curve < 1 brightens the dark end so faint noise and streaks in the air stay visible
+  const lut = new Uint32Array(65536), den = (t1 - t0) || 1, gain = darkAreaGain();   // lifts the air so faint noise and streaks stay visible, without brightening the bone
   for (let v = 0; v < 65536; v++) {
     let t = (v - t0)/den; t = t < 0 ? 0 : t > 1 ? 1 : t;
-    if (curve !== 1) t = Math.pow(t, curve);
+    if (gain) t = Math.min(1, t * (1 + gain * Math.exp(-t / 0.08)));
     const g = (t*255 + 0.5) | 0; lut[v] = 0xFF000000 | (g<<16) | (g<<8) | g;
   }
   const raw = d.raw; for (let i = 0; i < raw.length; i++) u32[i] = lut[raw[i]];
@@ -417,10 +420,28 @@ function setMode(m) {
 
 /* ---------------- ROIs + statistics ---------------- */
 const NS = 'http://www.w3.org/2000/svg';
+function addText(svg, x, y, text, size, k) {
+  const t = document.createElementNS(NS,'text');
+  t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('font-size', size/k); t.setAttribute('font-family', 'Inter, system-ui, sans-serif'); t.setAttribute('font-weight', 600);
+  t.setAttribute('fill', '#ffffff'); t.setAttribute('stroke', '#0b0814'); t.setAttribute('stroke-width', 3.5/k); t.setAttribute('paint-order', 'stroke'); t.setAttribute('stroke-linejoin', 'round');
+  t.textContent = text; svg.appendChild(t);
+}
+function drawLabels(svg, scan, k) {                  // ring + label on the aluminum rod, kept a constant size on screen at any zoom
+  const lvl = MAN.levels.find(l => l.n === S.level); if (!S.labels || !lvl || !lvl.rod) return;
+  const o = scan.rodOffset || { dx:0, dy:0 }, cx = lvl.rod.x + o.dx, cy = lvl.rod.y + o.dy, r = lvl.rod.r + 5;
+  const ring = document.createElementNS(NS,'circle');
+  ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', r); ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#5eead4'); ring.setAttribute('stroke-width', 2.5/k);
+  const line = document.createElementNS(NS,'line');
+  line.setAttribute('x1', cx + r); line.setAttribute('y1', cy); line.setAttribute('x2', cx + r + 16/k); line.setAttribute('y2', cy); line.setAttribute('stroke', '#5eead4'); line.setAttribute('stroke-width', 2.5/k);
+  svg.appendChild(ring); svg.appendChild(line);
+  addText(svg, cx + r + 22/k, cy + 5/k, 'Aluminum rod', 15, k);
+}
 function updateROIs() {
   const k = fit()*S.view.z;
+  if (!(k > 0)) return;                               // the panes have no size yet; the resize observer redraws once they do
   for (const w of ['A','B']) {
     const svg = $('svg'+w); svg.innerHTML = '';
+    if (MAN) drawLabels(svg, w === 'A' ? scanById(S.ref) : currentScan(), k);
     for (const r of [1,2]) {
       const roi = S.roi[r]; if (!roi) continue;
       const rect = document.createElementNS(NS,'rect');
@@ -588,6 +609,7 @@ function update() {
   const b = currentScan(), a = scanById(S.ref);
   buildLevels(); buildParams(); buildExplain(); chipsFor('A', a, b.params); chipsFor('B', b, a.params);
   $('selA').value = a.id; $('selB').value = b.id;
+  updateROIs();                                       // labels depend on the level and on which scans are shown
   refresh();
 }
 function setWL(c, w, boost = S.boost) {
@@ -625,6 +647,7 @@ async function init() {
   S.level = 913; S.ref = MAN.baseline; S.sel = { ...scanById(MAN.baseline).params };
   $('modeSide').onclick = () => setMode('side'); $('modeWipe').onclick = () => setMode('wipe');
   $('toolPan').onclick = () => setTool('pan'); $('toolR1').onclick = () => setTool('roi1'); $('toolR2').onclick = () => setTool('roi2');
+  $('labelsBtn').onclick = () => { S.labels = !S.labels; $('labelsBtn').classList.toggle('on', S.labels); updateROIs(); };
   $('zoomReset').onclick = () => { S.view = { z:1, tx:0, ty:0 }; applyView(); };
   fillPickers();
   $('selA').onchange = e => { S.ref = e.target.value; S.last = null; $('snap').textContent = ''; update(); };
@@ -647,7 +670,7 @@ async function init() {
   const wrap = $('stageWrap');
   const sizeStage = () => wrap.style.setProperty('--h', Math.max(160, wrap.clientHeight - $('pickers').offsetHeight - 10) + 'px');
   const ro = new ResizeObserver(sizeStage); ro.observe(wrap); ro.observe($('pickers'));
-  setWL(0.48, 1.04, 60); setTool('pan'); setMode('side'); update();
+  setWL(0.69, 1.45, 60); setTool('pan'); setMode('side'); update();
 }
 init();
 </script>
