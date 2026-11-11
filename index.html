@@ -55,8 +55,18 @@ button{font-family:inherit;color:inherit}
 .tbtn.solo{border:1px solid rgba(255,255,255,0.16);border-radius:7px}
 .tlabel{font-size:10.5px;font-family:var(--mono);letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
 #stageWrap{flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center;overflow:hidden;}
-#stage{position:relative;width:min(100%, calc(var(--h, calc(100vh - 320px)) * 2 + 8px));}
-#stage.wipe{width:min(100%, var(--h, calc(100vh - 320px)));}
+#stageCol{width:min(100%, calc(var(--h, calc(100vh - 360px)) * 2 + 8px));}
+#stageCol.wipe{width:min(100%, var(--h, calc(100vh - 360px)));}
+#stage{position:relative;width:100%;}
+/* dragging on the images must never highlight the text on top of them */
+#stage,#stage *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+#stage canvas{-webkit-user-drag:none;}
+#pickers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.picker{display:flex;align-items:center;gap:8px;min-width:0;}
+.plab{font-family:var(--mono);font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.picker select{flex:1;min-width:0;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid rgba(255,255,255,0.18);border-radius:7px;font-family:var(--sans);font-size:13px;cursor:pointer;text-overflow:ellipsis;}
+.picker select:hover,.picker select:focus{border-color:var(--accent2);outline:none;}
+.picker select option,.picker select optgroup{background:#120d20;color:#ebe6f5;}
 #stage.side{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .pane{position:relative;overflow:hidden;aspect-ratio:1;background:#000;border-radius:6px;border:1px solid var(--border);touch-action:none;}
 #stage.wipe .pane{position:absolute;inset:0;}
@@ -103,7 +113,8 @@ button{font-family:inherit;color:inherit}
 .seg button.cur{background:rgba(94,234,212,0.16);color:var(--accent2);font-weight:500}
 .seg button.also{background-image:repeating-linear-gradient(135deg,transparent 0 5px,rgba(224,160,74,0.10) 5px 7px);}
 .seg button.cur.also{background-image:none}
-.refrow{display:flex;gap:6px;margin-top:4px}
+.refrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.refrow #reset{grid-column:1 / -1}
 .btn{flex:1;padding:7px 8px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
 .btn:hover{color:var(--text);border-color:rgba(255,255,255,.22)}
 #snap{font-size:11.5px;color:var(--warn);line-height:1.45;margin-top:8px;min-height:0;}
@@ -141,7 +152,7 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
   body{overflow:auto}
   #app{display:block;height:auto}
   #viewer{overflow:visible}
-  #stage,#stage.wipe{width:100%}
+  #stageCol,#stageCol.wipe{width:100%}
   #stage.side{grid-template-columns:1fr;}
   #panel{border-left:0;border-top:1px solid var(--border)}
 }
@@ -186,11 +197,17 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
       </div>
     </div>
     <div id="stageWrap">
-      <div id="stage" class="side">
-        <div class="pane" id="paneA"><div class="world" id="worldA"><canvas id="cA" width="960" height="960"></canvas><svg viewBox="0 0 960 960" id="svgA"></svg></div><div class="plabel">A &middot; reference</div><div class="pchips" id="chipsA"></div></div>
-        <div class="pane" id="paneB"><div class="world" id="worldB"><canvas id="cB" width="960" height="960"></canvas><svg viewBox="0 0 960 960" id="svgB"></svg></div><div class="plabel">B &middot; your selection</div><div class="pchips" id="chipsB"></div></div>
-        <div id="handle"></div>
-        <div id="loading">LOADING SLICE&hellip;</div>
+      <div id="stageCol">
+        <div id="pickers">
+          <label class="picker"><span class="plab">A &middot; Reference</span><select id="selA" aria-label="Scan shown in image A, the reference"></select></label>
+          <label class="picker"><span class="plab">B &middot; Compare</span><select id="selB" aria-label="Scan shown in image B, the one you compare"></select></label>
+        </div>
+        <div id="stage" class="side">
+          <div class="pane" id="paneA"><div class="world" id="worldA"><canvas id="cA" width="960" height="960"></canvas><svg viewBox="0 0 960 960" id="svgA"></svg></div><div class="plabel">A &middot; Reference</div><div class="pchips" id="chipsA"></div></div>
+          <div class="pane" id="paneB"><div class="world" id="worldB"><canvas id="cB" width="960" height="960"></canvas><svg viewBox="0 0 960 960" id="svgB"></svg></div><div class="plabel">B &middot; Compare</div><div class="pchips" id="chipsB"></div></div>
+          <div id="handle"></div>
+          <div id="loading">LOADING SLICE&hellip;</div>
+        </div>
       </div>
     </div>
     <p class="hint" id="toolHint">Scroll to zoom, drag to pan. Both images move together so you can compare the same spot.</p>
@@ -204,12 +221,14 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
     </section>
 
     <section class="sec">
-      <h2>2 &middot; Change a scan setting (image B)</h2>
+      <h2>2 &middot; Change a setting on image B</h2>
+      <p class="hint" style="margin-bottom:10px">Image A is your <b>reference</b> (the baseline scan until you change it). The settings below change image B. You can also pick any scan for A or B from the menus above the images.</p>
       <div id="params"></div>
       <div id="snap"></div>
       <div class="refrow">
-        <button class="btn" id="pin">Use B as reference</button>
-        <button class="btn" id="reset">Reset to baseline</button>
+        <button class="btn" id="swap" title="Show B as the reference and the old reference as B">Swap A &harr; B</button>
+        <button class="btn" id="pin" title="Keep this scan as image A so you can compare other settings against it">Make B the reference</button>
+        <button class="btn" id="reset" title="Image A goes back to the baseline scan and B to match">Reset to baseline</button>
       </div>
     </section>
 
@@ -387,6 +406,7 @@ function zoomAt(px, py, factor) {
 function setMode(m) {
   S.mode = m; const st = $('stage');
   st.classList.toggle('side', m === 'side'); st.classList.toggle('wipe', m === 'wipe');
+  $('stageCol').classList.toggle('wipe', m === 'wipe');
   $('modeSide').classList.toggle('on', m === 'side'); $('modeWipe').classList.toggle('on', m === 'wipe');
   $('stage').style.setProperty('--wipe', (S.wipe*100)+'%'); $('handle').style.left = (S.wipe*100)+'%';
   requestAnimationFrame(() => { clampView(); applyView(); });
@@ -505,6 +525,23 @@ function choose(p, v) {
   update();
 }
 const LABEL = { kv:'Tube voltage', filter:'Filter', avg:'Frame averaging', views:'Projections', bh:'BH correction', ring:'Ring reduction' };
+function scanLabel(s) {            // how a scan is named in the menus: what it changes compared with the baseline
+  const base = scanById(MAN.baseline).params, d = KEYS.filter(k => s.params[k] !== base[k]);
+  return d.length ? d.map(k => `${LABEL[k]} ${PARAMS[k].fmt(s.params[k])}`).join(' · ') : 'Baseline scan';
+}
+function fillPickers() {
+  const real = SCANS.filter(s => !s.simulated), sim = SCANS.filter(s => s.simulated);
+  for (const id of ['selA','selB']) {
+    const el = $(id); el.innerHTML = '';
+    const group = (label, list) => {
+      if (!list.length) return;
+      const g = document.createElement('optgroup'); g.label = label;
+      for (const s of list) { const o = document.createElement('option'); o.value = s.id; o.textContent = scanLabel(s); g.appendChild(o); }
+      el.appendChild(g);
+    };
+    group('Real scans (differences from the baseline)', real); group('Simulated (fewer projections)', sim);
+  }
+}
 function chipsFor(which, scan, other) {
   $('chips'+which).innerHTML = KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
     + (scan.simulated ? '<div class="prow sim">Simulated image</div>' : '');
@@ -516,10 +553,15 @@ function buildExplain() {
   else {
     if (diff.length > 1) {
       // closest scan to B that differs from it in only the setting the student just changed
-      const p = S.last, clean = p && SCANS.filter(s => s.id !== b.id && KEYS.every(k => k === p ? s.params[k] !== b.params[k] : s.params[k] === b.params[k]))
-        .sort((x,y) => (y.params[p] === a.params[p]) - (x.params[p] === a.params[p]))[0];
+      // a scan that differs from B in only one setting: try the setting the student just changed first, then any other
+      let clean = null, cleanP = null;
+      for (const p of [S.last, ...diff].filter((k, i, arr) => k && arr.indexOf(k) === i)) {
+        clean = SCANS.filter(s => s.id !== b.id && KEYS.every(k => k === p ? s.params[k] !== b.params[k] : s.params[k] === b.params[k]))
+          .sort((x,y) => (y.params[p] === a.params[p]) - (x.params[p] === a.params[p]))[0];
+        if (clean) { cleanP = p; break; }
+      }
       h += `<div class="card warn"><h3>Not a one-setting comparison</h3><p>A and B differ in <b>${diff.length} settings</b> (${diff.map(k => PARAMS[k].title.toLowerCase()).join(', ')}), so you can&rsquo;t pin any difference on a single cause.</p>`
-        + (clean ? `<p><button class="btn" id="cleanBtn" style="margin-top:4px;width:100%">Compare against ${clean.params.kv} kV &middot; ${SHORT.filter(clean.params.filter)} &middot; BH ${clean.params.bh} instead</button></p>` : '')
+        + (clean ? `<p><button class="btn" id="cleanBtn" style="margin-top:4px;width:100%">Compare B against ${PARAMS[cleanP].title.toLowerCase()} ${PARAMS[cleanP].fmt(clean.params[cleanP])} instead</button></p>` : '')
         + '</div>';
       if (clean) setTimeout(() => { const btn = $('cleanBtn'); if (btn) btn.onclick = () => { S.ref = clean.id; $('snap').textContent = ''; update(); }; });
     }
@@ -542,6 +584,7 @@ function buildLevels() {
 function update() {
   const b = currentScan(), a = scanById(S.ref);
   buildLevels(); buildParams(); buildExplain(); chipsFor('A', a, b.params); chipsFor('B', b, a.params);
+  $('selA').value = a.id; $('selB').value = b.id;
   refresh();
 }
 function setWL(c, w) {
@@ -579,6 +622,10 @@ async function init() {
   $('modeSide').onclick = () => setMode('side'); $('modeWipe').onclick = () => setMode('wipe');
   $('toolPan').onclick = () => setTool('pan'); $('toolR1').onclick = () => setTool('roi1'); $('toolR2').onclick = () => setTool('roi2');
   $('zoomReset').onclick = () => { S.view = { z:1, tx:0, ty:0 }; applyView(); };
+  fillPickers();
+  $('selA').onchange = e => { S.ref = e.target.value; S.last = null; $('snap').textContent = ''; update(); };
+  $('selB').onchange = e => { S.sel = { ...scanById(e.target.value).params }; S.last = null; $('snap').textContent = ''; update(); };
+  $('swap').onclick = () => { const cur = currentScan().id, old = S.ref; S.ref = cur; S.sel = { ...scanById(old).params }; S.last = null; $('snap').textContent = ''; update(); };
   $('pin').onclick = () => { S.ref = currentScan().id; $('snap').textContent = ''; update(); };
   $('reset').onclick = () => { S.ref = MAN.baseline; S.sel = { ...scanById(MAN.baseline).params }; $('snap').textContent = ''; update(); };
   $('wlC').oninput = e => setWL(e.target.value/100, S.wl.w); $('wlW').oninput = e => setWL(S.wl.c, e.target.value/100);
@@ -593,7 +640,8 @@ async function init() {
   new ResizeObserver(() => { clampView(); applyView(); }).observe($('paneA'));
   // size the images to the space left under the (taller) toolbar instead of using a fixed offset
   const wrap = $('stageWrap');
-  new ResizeObserver(() => wrap.style.setProperty('--h', Math.max(160, wrap.clientHeight) + 'px')).observe(wrap);
+  const sizeStage = () => wrap.style.setProperty('--h', Math.max(160, wrap.clientHeight - $('pickers').offsetHeight - 10) + 'px');
+  const ro = new ResizeObserver(sizeStage); ro.observe(wrap); ro.observe($('pickers'));
   setWL(0.5, 1.0); setTool('pan'); setMode('side'); update();
 }
 init();
