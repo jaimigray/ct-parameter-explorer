@@ -127,7 +127,7 @@ button{font-family:inherit;color:inherit}
 .card.warn{border-color:rgba(224,160,74,.45);background:rgba(224,160,74,.06)}
 .card.warn p{color:#e8c690}
 .card.note{border-color:rgba(158,207,239,.3)}
-.wl{display:grid;grid-template-columns:54px 1fr 40px;gap:6px 8px;align-items:center;font-size:11px;}
+.wl{display:grid;grid-template-columns:74px 1fr 40px;gap:6px 8px;align-items:center;font-size:11px;}
 .wl label{color:var(--muted)}
 .wl output{font-family:var(--mono);font-size:10px;text-align:right}
 input[type=range]{width:100%;accent-color:var(--accent2);}
@@ -174,9 +174,9 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
       <div class="tset">
         <span class="tlabel">Display</span>
         <div class="tgroup">
-          <button class="tbtn" data-wl="0.5,1">Full range</button>
-          <button class="tbtn" data-wl="0.72,0.55">Bone detail</button>
-          <button class="tbtn" data-wl="0.08,0.16">Show noise &amp; streaks</button>
+          <button class="tbtn" data-wl="0.48,1.04,60" title="The whole range, with the dark end brightened and the air shown as dark gray (not black) so faint noise and streaks stay visible">Full range</button>
+          <button class="tbtn" data-wl="0.72,0.55,0" title="Zooms in on the bright end to separate dense bone from thin bone">Bone detail</button>
+          <button class="tbtn" data-wl="0.08,0.16,0" title="Zooms in on the dark end so noise, streaks and rings are easy to see (bone is saturated)">Show noise &amp; streaks</button>
         </div>
       </div>
       <div class="tset">
@@ -239,10 +239,11 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
 
     <section class="sec">
       <h2>Display</h2>
-      <p class="hint" style="margin-bottom:8px">The Full range, Bone detail and Show noise &amp; streaks buttons are above the images. Fine-tune the window here.</p>
+      <p class="hint" style="margin-bottom:8px">The Full range, Bone detail and Show noise &amp; streaks buttons are above the images. Fine-tune the display here. <b>Dark areas</b> brightens the dark end so faint noise and streaks in the air stay visible without clipping the bone; set it to 0% for a plain straight-line display.</p>
       <div class="wl">
         <label for="wlC">Level</label><input type="range" id="wlC" min="0" max="120" value="50"><output id="wlCo"></output>
         <label for="wlW">Width</label><input type="range" id="wlW" min="2" max="150" value="100"><output id="wlWo"></output>
+        <label for="wlG">Dark areas</label><input type="range" id="wlG" min="0" max="100" value="60"><output id="wlGo"></output>
       </div>
       <label class="chk"><input type="checkbox" id="norm"><span>Scale each scan automatically (air = black, brightest bone = white), as you would when first opening a scan. Off by default, so both images use identical raw gray values.</span></label>
     </section>
@@ -302,7 +303,7 @@ const EXPLAIN = {
 const $ = id => document.getElementById(id);
 const S = {
   level:null, sel:null, ref:null, last:null, mode:'side', tool:'pan', wipe:0.5,
-  wl:{c:0.5,w:1.0}, norm:false, view:{z:1,tx:0,ty:0}, roi:{1:null,2:null}
+  wl:{c:0.48,w:1.04}, boost:60, norm:false, view:{z:1,tx:0,ty:0}, roi:{1:null,2:null}
 };
 let MAN = null, SCANS = [], SIZE = 960;
 const cache = new Map();
@@ -345,14 +346,16 @@ function loadSlice(id, level) {
 }
 
 /* ---------------- rendering ---------------- */
+const darkAreaCurve = () => 1 - 0.0075 * S.boost;      // boost 0 = straight line, 60 = gamma 0.55 (the default), 100 = gamma 0.25
 function paint(which, d, lo, hi) {
   const cv = $('c'+which);
   if (!ctxs[which]) { const c = cv.getContext('2d'); ctxs[which] = { c, img:c.createImageData(SIZE,SIZE) }; ctxs[which].u32 = new Uint32Array(ctxs[which].img.data.buffer); }
   const { c, img, u32 } = ctxs[which];
   const span = hi - lo, t0 = lo + (S.wl.c - S.wl.w/2)*span, t1 = lo + (S.wl.c + S.wl.w/2)*span;
-  const lut = new Uint32Array(65536), den = (t1 - t0) || 1;
+  const lut = new Uint32Array(65536), den = (t1 - t0) || 1, curve = darkAreaCurve();   // curve < 1 brightens the dark end so faint noise and streaks in the air stay visible
   for (let v = 0; v < 65536; v++) {
     let t = (v - t0)/den; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    if (curve !== 1) t = Math.pow(t, curve);
     const g = (t*255 + 0.5) | 0; lut[v] = 0xFF000000 | (g<<16) | (g<<8) | g;
   }
   const raw = d.raw; for (let i = 0; i < raw.length; i++) u32[i] = lut[raw[i]];
@@ -587,12 +590,13 @@ function update() {
   $('selA').value = a.id; $('selB').value = b.id;
   refresh();
 }
-function setWL(c, w) {
-  S.wl.c = c; S.wl.w = w; $('wlC').value = Math.round(c*100); $('wlW').value = Math.round(w*100);
-  $('wlCo').textContent = Math.round(c*100)+'%'; $('wlWo').textContent = Math.round(w*100)+'%'; scheduleDraw();
-  document.querySelectorAll('[data-wl]').forEach(b => {          // highlight the preset that matches the current window
-    const [pc, pw] = b.dataset.wl.split(',').map(Number);
-    b.classList.toggle('on', Math.abs(pc - c) < 0.006 && Math.abs(pw - w) < 0.006);
+function setWL(c, w, boost = S.boost) {
+  S.wl.c = c; S.wl.w = w; S.boost = boost;
+  $('wlC').value = Math.round(c*100); $('wlW').value = Math.round(w*100); $('wlG').value = boost;
+  $('wlCo').textContent = Math.round(c*100)+'%'; $('wlWo').textContent = Math.round(w*100)+'%'; $('wlGo').textContent = Math.round(boost)+'%'; scheduleDraw();
+  document.querySelectorAll('[data-wl]').forEach(b => {          // highlight the preset that matches the current display
+    const [pc, pw, pb] = b.dataset.wl.split(',').map(Number);
+    b.classList.toggle('on', Math.abs(pc - c) < 0.006 && Math.abs(pw - w) < 0.006 && Math.abs(pb - boost) < 0.6);
   });
 }
 function setTool(t) {
@@ -629,7 +633,8 @@ async function init() {
   $('pin').onclick = () => { S.ref = currentScan().id; $('snap').textContent = ''; update(); };
   $('reset').onclick = () => { S.ref = MAN.baseline; S.sel = { ...scanById(MAN.baseline).params }; $('snap').textContent = ''; update(); };
   $('wlC').oninput = e => setWL(e.target.value/100, S.wl.w); $('wlW').oninput = e => setWL(S.wl.c, e.target.value/100);
-  document.querySelectorAll('[data-wl]').forEach(b => b.onclick = () => { const [c,w] = b.dataset.wl.split(',').map(Number); setWL(c,w); });
+  document.querySelectorAll('[data-wl]').forEach(b => b.onclick = () => { const [c,w,g] = b.dataset.wl.split(',').map(Number); setWL(c,w,g); });
+  $('wlG').oninput = e => setWL(S.wl.c, S.wl.w, +e.target.value);
   $('norm').onchange = e => { S.norm = e.target.checked; scheduleDraw(); };
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
@@ -642,7 +647,7 @@ async function init() {
   const wrap = $('stageWrap');
   const sizeStage = () => wrap.style.setProperty('--h', Math.max(160, wrap.clientHeight - $('pickers').offsetHeight - 10) + 'px');
   const ro = new ResizeObserver(sizeStage); ro.observe(wrap); ro.observe($('pickers'));
-  setWL(0.5, 1.0); setTool('pan'); setMode('side'); update();
+  setWL(0.48, 1.04, 60); setTool('pan'); setMode('side'); update();
 }
 init();
 </script>
