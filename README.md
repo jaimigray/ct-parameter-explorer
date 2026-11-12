@@ -6,9 +6,9 @@ An interactive page that helps anatomy students see how CT scan settings change 
 
 Choose an anatomical level, then change a scan setting and compare the result against a reference scan, side by side or with a wipe slider. Zoom and pan are shared between the two images, and a measurement tool reports mean, noise (SD) and contrast-to-noise ratio for the same spot in both scans.
 
-**Settings that can be compared:** tube voltage (60 / 100 / 200 kV), beam filter (none / aluminum / brass), frame averaging (1 / 4), beam-hardening correction (0 / 0.1 / 0.5 / 1), ring reduction, and number of projections (7200 down to 225).
+**Settings that can be compared:** tube voltage (60 / 100 / 200 kV), beam filter (none / aluminum / brass), frame averaging (1 / 4), beam-hardening correction (0 / 0.1 / 0.5 / 1), ring reduction, and number of projections (7200 down to 112).
 
-> The 7200-projection images are real scans. The fewer-projection images (3600, 1800, 900, 450, 225) are **simulated** from the real 7200-projection baseline (parallel-beam approximation, noise matched to the real scan) and are labelled as such in the app.
+> All images are real reconstructions. The fewer-projection sets (3600, 1800, 900, 450, 225, 112) were re-reconstructed from every 2nd, 4th, 8th, 16th, 32nd and 64th radiograph of the same 7200-projection scan, with the same reconstruction settings. (225 cannot be halved evenly, so the last set is 7200 / 64 rounded down to 112.)
 
 ## Run it locally
 
