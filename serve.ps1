@@ -13,6 +13,7 @@ $mimeTypes = @{
   '.css'  = 'text/css'
   '.png'  = 'image/png'
   '.jpg'  = 'image/jpeg'
+  '.webp' = 'image/webp'
   '.gz'   = 'application/octet-stream'
 }
 while ($listener.IsListening) {
