@@ -106,6 +106,20 @@ button{font-family:inherit;color:inherit}
 .lvl{padding:7px 8px;background:transparent;border:1px solid var(--border);border-radius:5px;cursor:pointer;text-align:left;transition:all .15s;}
 .lvl:hover{border-color:rgba(255,255,255,0.2)}
 .lvl.on{border-color:var(--accent2);background:rgba(94,234,212,0.1)}
+.skull{position:relative;aspect-ratio:2000/1045;background:var(--panel);isolation:isolate;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.skull img{position:absolute;inset:0;width:100%;height:100%;display:block;mix-blend-mode:lighten;opacity:.92;user-select:none;-webkit-user-drag:none;pointer-events:none;}
+.cut{position:absolute;top:0;bottom:0;width:20px;margin-left:-10px;padding:0;border:0;background:transparent;cursor:pointer;}
+.cut::before{content:"";position:absolute;left:50%;top:11%;bottom:5%;width:1px;transform:translateX(-50%);background:rgba(255,255,255,0.32);}
+.cut:hover::before{background:rgba(255,255,255,0.8);}
+.cut i{position:absolute;top:2px;left:50%;transform:translateX(-50%);font:normal 8px var(--mono);letter-spacing:0;color:#b6abd2;padding:1px;border-radius:3px;}
+.cut:hover i{color:#fff;}
+.cut.on::before{width:2px;top:7%;bottom:2%;background:var(--accent2);box-shadow:0 0 5px var(--accent2),0 0 14px rgba(94,234,212,0.55);}
+.cut.on i{color:#06231f;background:var(--accent2);font-weight:600;}
+.cut:focus-visible{outline:1px solid var(--accent2);outline-offset:-2px;}
+.rodlab{position:absolute;right:2.5%;top:73%;font:8px var(--mono);letter-spacing:0.08em;text-transform:uppercase;color:var(--change);pointer-events:none;}
+.skullends{display:flex;justify-content:space-between;margin-top:4px;font:8.5px var(--mono);letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
+.skullcap{margin-top:6px;font-size:11.5px;line-height:1.5;color:#b9b0d0;}
+.skullcap b{color:var(--accent2);font-weight:600;}
 .lvl b{display:block;font-size:11px;font-weight:500;}
 .lvl span{font-family:var(--mono);font-size:9px;color:var(--muted);}
 .prompt{margin-top:9px;font-size:12px;line-height:1.55;color:#ddd6f0;background:rgba(94,234,212,0.06);border-left:2px solid var(--accent);padding:8px 10px;border-radius:0 5px 5px 0;}
@@ -232,6 +246,16 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
   </main>
 
   <aside id="panel">
+    <section class="sec locator" aria-label="Where the current slice sits in the skull">
+      <h2>Where is this slice?</h2>
+      <div class="skull" id="skull">
+        <img src="skull-side.webp" width="2000" height="1045" alt="Side view of the raccoon skull with the snout to the right and a straight aluminum rod beneath it" draggable="false">
+        <div id="cuts"></div>
+        <span class="rodlab">aluminum rod</span>
+      </div>
+      <div class="skullends"><span>&larr; back of skull</span><span>snout &rarr;</span></div>
+      <p class="skullcap" id="skullCap"></p>
+    </section>
     <section class="sec">
       <h2>1 &middot; Choose an anatomical level</h2>
       <div class="levels" id="levels"></div>
@@ -621,6 +645,25 @@ function buildLevels() {
   const l = MAN.levels.find(x => x.n === S.level);
   $('prompt').innerHTML = `<small>${l.region}</small>${l.prompt}`;
   $('badgeLevel').textContent = `${l.name} · slice ${l.n}`;
+  markSkull(l);
+}
+// Side view of the skull: the aluminum rod beneath it spans the whole 1825-slice stack, so its two ends in the picture
+// (x = 131.5 and 1921.5 of 2000 px) are the edges of slice 1 (snout end, right) and slice 1825 (back, left).
+const SKULL = { slices: 1825, xSnout: 1921.5, xBack: 131.5, w: 2000 };
+function skullPct(n) { return (SKULL.xSnout - (n - 0.5) * (SKULL.xSnout - SKULL.xBack) / SKULL.slices) / SKULL.w * 100; }
+function markSkull(l) {
+  const box = $('cuts');
+  if (!box.children.length) {
+    MAN.levels.forEach(v => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cut'; b.dataset.n = v.n;
+      b.style.left = skullPct(v.n) + '%'; b.title = `${v.name} · slice ${v.n}`; b.setAttribute('aria-label', `${v.name}, slice ${v.n}`);
+      b.innerHTML = `<i>${v.n}</i>`; b.onclick = () => { S.level = v.n; update(); };
+      box.appendChild(b);
+    });
+  }
+  for (const b of box.children) b.classList.toggle('on', +b.dataset.n === l.n);
+  const pct = Math.round((l.n - 0.5) / SKULL.slices * 100);
+  $('skullCap').innerHTML = `The <b>teal line</b> is where <b>slice ${l.n}</b> cuts the skull (${l.name.toLowerCase()}), about ${pct}% of the way from the snout to the back. The round dot in every slice is the rod shown under the skull. Click any line to jump to that level.`;
 }
 function update() {
   const b = currentScan(), a = scanById(S.ref);
