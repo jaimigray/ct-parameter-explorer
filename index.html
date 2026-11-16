@@ -25,7 +25,7 @@
 }
 
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
-body{padding-top:32px;box-sizing:border-box;}   /* room for the credit banner (this was set on both html and body, which pushed the page 64px down and cut off its bottom) */
+body{padding-top:var(--banner-h,32px);box-sizing:border-box;}   /* room for the credit banner; --banner-h is its real height (it wraps onto 2-3 lines on a phone) */
 body{overflow:hidden;}
 button{font-family:inherit;color:inherit}
 
@@ -39,19 +39,12 @@ button{font-family:inherit;color:inherit}
 .credit-banner a:last-child { color: #f4a261; }
 .credit-banner a:hover { text-decoration: underline; }
 
-#app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:calc(100vh - 32px);}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:calc(100vh - var(--banner-h,32px));}
 
 /* ---------- viewer column ---------- */
 #viewer{display:flex;flex-direction:column;min-width:0;padding:14px 16px 10px;gap:10px;overflow:hidden;}
 .titlebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .titlebar h1{font-size:15px;font-weight:600;letter-spacing:0.01em;}
-.badge.desktop{border-color:rgba(224,160,74,0.45);color:var(--warn);}
-#deviceNote{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;padding:56px 18px 18px;background:rgba(11,8,20,0.9);}
-#deviceNote.show{display:flex;}
-#deviceNote .box{max-width:420px;background:var(--panel);border:1px solid rgba(224,160,74,0.55);border-radius:12px;padding:22px 22px 20px;box-shadow:0 10px 40px rgba(0,0,0,0.55);}
-#deviceNote h2{font-size:18px;font-weight:600;margin-bottom:10px;color:var(--warn);}
-#deviceNote p{font-size:14px;line-height:1.6;color:#d6cfe8;margin-bottom:10px;}
-#deviceNote button{margin-top:8px;width:100%;padding:12px;background:rgba(94,234,212,0.18);border:1px solid var(--accent2);border-radius:8px;color:var(--accent2);font-size:14px;font-weight:600;cursor:pointer;}
 .badge{font-size:9px;font-family:var(--mono);letter-spacing:0.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.1);color:var(--muted);padding:4px 10px;border-radius:100px;white-space:nowrap;}
 .toolbar{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center;}
 .tset{display:flex;align-items:center;gap:8px;}
@@ -76,7 +69,8 @@ button{font-family:inherit;color:inherit}
 .picker select:hover,.picker select:focus{border-color:var(--accent2);outline:none;}
 .picker select option,.picker select optgroup{background:#120d20;color:#ebe6f5;}
 #stage.side{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.pane{position:relative;overflow:hidden;aspect-ratio:1;background:#000;border-radius:6px;border:1px solid var(--border);touch-action:none;}
+.pane{position:relative;overflow:hidden;aspect-ratio:1;background:#000;border-radius:6px;border:1px solid var(--border);touch-action:pan-y;}   /* a vertical swipe still scrolls the page until you zoom in or pick a measuring tool (then .lock) */
+#stage.lock .pane{touch-action:none;}
 #stage.wipe .pane{position:absolute;inset:0;}
 #stage.wipe{aspect-ratio:1;}
 #stage.wipe #paneB{clip-path:inset(0 0 0 var(--wipe,50%));}
@@ -95,16 +89,21 @@ button{font-family:inherit;color:inherit}
 .phist canvas{display:block;width:150px;height:46px;}
 .hcap{display:flex;justify-content:space-between;margin-top:3px;font:8px var(--mono);letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
 #stage.nohist .phist{display:none;}
-@container (max-width: 400px) { .phist{display:none;} }
+.pname{display:none;font-weight:600;font-size:11.5px;line-height:1.4;color:#ddd6f0;}
+/* narrow images (phones, small windows): the settings list shrinks to the scan's name and the histogram gets smaller */
+@container (max-width: 380px) { .pchips{min-width:0;padding:5px 9px;} .pchips .pname{display:block;} .pchips .prow{display:none;} }
+@container (max-width: 400px) { .phist canvas{width:110px;height:34px;} .hcap{display:none;} .phist{padding:5px 6px;} }
+@container (max-width: 260px) { .phist{display:none;} .pname{font-size:10px;} }
+.zgroup{display:none;}
 .prow{display:flex;justify-content:space-between;gap:18px;color:#ddd6f0;}
 .prow .k{color:var(--muted)}
 .prow .v{font-family:var(--mono);font-weight:500;text-align:right}
 .prow.diff .k,.prow.diff .v{color:var(--change)}
 .prow.sim{justify-content:flex-start;color:var(--warn);margin-top:2px;padding-top:3px;border-top:1px solid var(--border)}
-#handle{position:absolute;top:0;bottom:0;width:0;z-index:5;display:none;cursor:ew-resize;touch-action:none;}
+#handle{position:absolute;top:0;bottom:0;width:48px;margin-left:-24px;z-index:5;display:none;cursor:ew-resize;touch-action:none;}   /* wide enough to grab with a finger */
 #stage.wipe #handle{display:block;}
-#handle::before{content:"";position:absolute;left:-1px;top:0;bottom:0;width:2px;background:var(--accent2);opacity:.9;}
-#handle::after{content:"\2194";position:absolute;left:-14px;top:50%;margin-top:-14px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 0 2px rgba(0,0,0,.5);}
+#handle::before{content:"";position:absolute;left:calc(50% - 1px);top:0;bottom:0;width:2px;background:var(--accent2);opacity:.9;}
+#handle::after{content:"\2194";position:absolute;left:calc(50% - 19px);top:50%;margin-top:-19px;width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 0 2px rgba(0,0,0,.5);}
 #loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--accent2);background:rgba(11,8,20,0.6);z-index:6;letter-spacing:0.1em;}
 .hint{font-size:11px;color:var(--muted);line-height:1.5;}
 
@@ -178,13 +177,46 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
   .tbtn{padding:9px 12px;font-size:13px}
   .toolbar{gap:8px 12px}
 }
+/* ---------- phones and tablets ---------- */
+@media (max-width:900px), (pointer:coarse) { .zgroup{display:flex;} .zgroup .tbtn{min-width:46px;font-size:18px;line-height:1;} }
 @media (max-width:900px){
+  html,body{height:auto}
   body{overflow:auto}
-  #app{display:block;height:auto}
-  #viewer{overflow:visible}
-  #stageCol,#stageCol.wipe{width:100%}
-  #stage.side{grid-template-columns:1fr;}
-  #panel{border-left:0;border-top:1px solid var(--border)}
+  /* One column. The two image-area wrappers and the side panel dissolve into the page flow so the images can stay pinned at the top of
+     the screen (sticky) while the levels, settings and explanations scroll underneath; order: title, scan menus, images, toolbar, hints, panel. */
+  #app{display:flex;flex-direction:column;height:auto;gap:12px;padding:12px 14px 24px;}
+  #viewer,#stageWrap,#stageCol,#panel{display:contents;}
+  .titlebar{order:1;}
+  #pickers{order:2;margin-bottom:0;}
+  #stage{order:3;position:sticky;top:var(--banner-h,32px);z-index:20;margin:0 auto;box-shadow:0 0 0 6px var(--bg),0 12px 14px -8px rgba(0,0,0,0.75);}
+  #stage.side{width:min(100%,110vh);width:min(100%,110svh);}
+  #stage.wipe{width:min(100%,55vh);width:min(100%,55svh);}
+  .toolbar{order:4;}
+  #viewer .hint{order:5;}
+  #panel .sec,.foot{order:6;}
+  .foot{border-top:1px solid var(--border);}
+}
+@media (max-width:700px){
+  .credit-banner{font-size:10.5px;line-height:1.35;padding:5px 10px;}
+  .titlebar{gap:8px;}
+  .titlebar h1{font-size:14px;}
+  .titlebar .badge:not(#badgeLevel){display:none;}
+  #pickers{grid-template-columns:1fr;gap:6px;}
+  .plab{min-width:92px;}
+  .toolbar{gap:8px;}
+  .tset{flex-wrap:wrap;gap:6px;}
+  .tgroup{flex-wrap:wrap;}
+  .tbtn{padding:10px 11px;font-size:12.5px;}
+}
+@media (pointer:coarse){
+  .tbtn{min-height:44px;}
+  .lvl{padding:11px 9px;}
+  .seg button{padding:13px 4px;font-size:12.5px;}
+  .btn{padding:12px 8px;font-size:10.5px;}
+  .picker select{font-size:16px;padding:10px;}
+  .cut{width:32px;margin-left:-16px;}
+  input[type=range]{height:30px;}
+  .chk input{width:18px;height:18px;}
 }
 </style>
 </head>
@@ -193,23 +225,12 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
 
 <div id="fatal"></div>
 
-<div id="deviceNote" role="dialog" aria-modal="true" aria-labelledby="deviceNoteTitle">
-  <div class="box">
-    <h2 id="deviceNoteTitle">Please use a computer</h2>
-    <p>The CT Parameter Explorer is designed for a computer (PC, Mac or laptop) with a mouse and a large screen.</p>
-    <p>It isn&rsquo;t built for phones or tablets, so the images, controls and zoom may not work well there.</p>
-    <button type="button" id="deviceNoteOk">Continue anyway</button>
-  </div>
-</div>
-
 <div id="app">
   <main id="viewer">
     <div class="titlebar">
       <h1>CT Parameter Explorer</h1>
       <span class="badge">Procyon lotor · raccoon skull</span>
-      <span class="badge" id="badgeLevel"></span>
-      <span class="badge desktop" title="This tool is designed for a computer, not for phones or tablets">Best on a computer</span>
-    </div>
+      <span class="badge" id="badgeLevel"></span>    </div>
     <div class="toolbar">
       <div class="tset">
         <span class="tlabel">Display</span>
@@ -233,6 +254,7 @@ table.stat td:first-child,table.stat th:first-child{text-align:left}
           <button class="tbtn" id="toolR1"><span class="reg1">&#9632;</span> Region 1</button>
           <button class="tbtn" id="toolR2"><span class="reg2">&#9632;</span> Region 2</button>
         </div>
+        <div class="tgroup zgroup"><button class="tbtn" id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button><button class="tbtn" id="zoomOut" aria-label="Zoom out" title="Zoom out">&minus;</button></div>
         <button class="tbtn solo" id="zoomReset">Reset zoom</button>
         <button class="tbtn solo on" id="labelsBtn" title="Show or hide the label on the aluminum rod">Labels</button>
         <button class="tbtn solo on" id="histBtn" title="Show or hide the gray-value histogram in the corner of each image">Histograms</button>
@@ -478,7 +500,17 @@ function applyView() {
     const el = $(w); el.style.transform = `translate(${v.tx}px,${v.ty}px) scale(${k})`;
     el.classList.toggle('pix', k >= 2);
   }
+  syncLock();
   updateROIs();
+}
+// While the image is zoomed in (or a measuring tool is chosen) a touch drag belongs to the image; otherwise a vertical swipe scrolls the page.
+function syncLock() { $('stage').classList.toggle('lock', S.tool !== 'pan' || S.view.z > 1.001); }
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+function updateHint() {
+  $('toolHint').textContent = S.tool !== 'pan'
+    ? (isTouch ? 'Tap to drop a small measurement box, or drag to draw your own.' : 'Click to drop a small measurement box, or drag to draw your own.') + ' The same spot is measured in both scans.'
+    : isTouch ? (S.mode === 'wipe' ? 'Drag the round handle to compare the two images. ' : '') + 'Pinch or double-tap to zoom, drag to pan. Both images move together so you can compare the same spot.'
+              : 'Scroll to zoom, drag to pan, double-click to zoom in. Both images move together so you can compare the same spot.';
 }
 function clampView() {
   const v = S.view, pw = $('paneA').clientWidth, ph = $('paneA').clientHeight, k = fit()*v.z;
@@ -493,7 +525,7 @@ function setMode(m) {
   S.mode = m; const st = $('stage');
   st.classList.toggle('side', m === 'side'); st.classList.toggle('wipe', m === 'wipe');
   $('stageCol').classList.toggle('wipe', m === 'wipe');
-  $('modeSide').classList.toggle('on', m === 'side'); $('modeWipe').classList.toggle('on', m === 'wipe');
+  $('modeSide').classList.toggle('on', m === 'side'); $('modeWipe').classList.toggle('on', m === 'wipe'); updateHint();
   $('stage').style.setProperty('--wipe', (S.wipe*100)+'%'); $('handle').style.left = (S.wipe*100)+'%';
   requestAnimationFrame(() => { clampView(); applyView(); });
 }
@@ -555,8 +587,10 @@ function updateStats() {
 
 /* ---------------- pointer handling ---------------- */
 let drag = null;
+// In side-by-side mode the right-hand half of the stage is image B; both images share one view, measured from their own top-left corner.
+const paneRectAt = x => (S.mode === 'side' && x > $('paneB').getBoundingClientRect().left) ? $('paneB').getBoundingClientRect() : $('paneA').getBoundingClientRect();
 function imgPoint(e) {
-  const r = $('paneA').getBoundingClientRect(); const pr = (S.mode === 'side' && e.target.closest && e.target.closest('#paneB')) ? $('paneB').getBoundingClientRect() : r;
+  const pr = paneRectAt(e.clientX);
   const px = e.clientX - pr.left, py = e.clientY - pr.top, k = fit()*S.view.z;
   return { px, py, x:(px - S.view.tx)/k, y:(py - S.view.ty)/k };
 }
@@ -564,16 +598,32 @@ const stage = $('stage');
 stage.addEventListener('wheel', e => {
   e.preventDefault(); const p = imgPoint(e); zoomAt(p.px, p.py, e.deltaY < 0 ? 1.18 : 1/1.18);
 }, { passive:false });
+const pts = new Map(); let lastTap = { t:0, x:0, y:0 };      // fingers currently down; the previous tap (for double-tap zoom)
 stage.addEventListener('pointerdown', e => {
   if (e.target.id === 'handle') { drag = { type:'wipe' }; stage.setPointerCapture(e.pointerId); return; }
+  pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (pts.size === 2) {                                        // two fingers: pinch to zoom, and pan with the midpoint
+    const [a, b] = [...pts.values()], mx = (a.x + b.x)/2, my = (a.y + b.y)/2, r = paneRectAt(mx);
+    drag = { type:'pinch', d0:Math.hypot(a.x - b.x, a.y - b.y) || 1, z0:S.view.z, tx0:S.view.tx, ty0:S.view.ty, cx0:mx - r.left, cy0:my - r.top, r };
+    stage.setPointerCapture(e.pointerId); return;
+  }
+  if (pts.size > 2) return;
   const p = imgPoint(e);
   if (S.tool === 'pan') drag = { type:'pan', sx:e.clientX, sy:e.clientY, tx:S.view.tx, ty:S.view.ty };
   else drag = { type:'roi', r:S.tool === 'roi1' ? 1 : 2, x0:p.x, y0:p.y, moved:false };
   stage.setPointerCapture(e.pointerId);
 });
 stage.addEventListener('pointermove', e => {
+  if (pts.has(e.pointerId)) pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
   if (!drag) return;
-  if (drag.type === 'pan') { S.view.tx = drag.tx + e.clientX - drag.sx; S.view.ty = drag.ty + e.clientY - drag.sy; clampView(); applyView(); }
+  if (drag.type === 'pinch') {
+    if (pts.size !== 2) return;
+    const [a, b] = [...pts.values()], f = fit(), z2 = Math.min(16, Math.max(1, drag.z0 * Math.hypot(a.x - b.x, a.y - b.y) / drag.d0));
+    const cx = (a.x + b.x)/2 - drag.r.left, cy = (a.y + b.y)/2 - drag.r.top;
+    const ix = (drag.cx0 - drag.tx0)/(f*drag.z0), iy = (drag.cy0 - drag.ty0)/(f*drag.z0);   // the image point that was under the fingers stays under them
+    S.view.z = z2; S.view.tx = cx - ix*f*z2; S.view.ty = cy - iy*f*z2; clampView(); applyView();
+  }
+  else if (drag.type === 'pan') { S.view.tx = drag.tx + e.clientX - drag.sx; S.view.ty = drag.ty + e.clientY - drag.sy; clampView(); applyView(); }
   else if (drag.type === 'wipe') {
     const r = stage.getBoundingClientRect(); S.wipe = Math.min(1, Math.max(0, (e.clientX - r.left)/r.width));
     stage.style.setProperty('--wipe', (S.wipe*100)+'%'); $('handle').style.left = (S.wipe*100)+'%';
@@ -583,7 +633,14 @@ stage.addEventListener('pointermove', e => {
   }
 });
 const endDrag = e => {
+  pts.delete(e.pointerId);
+  if (drag && drag.type === 'pinch') { if (pts.size < 2) drag = null; return; }   // lifting a finger ends the pinch (the other finger doesn't start panning)
   if (drag && drag.type === 'roi' && !drag.moved) { const s = 40; S.roi[drag.r] = { x:drag.x0 - s/2, y:drag.y0 - s/2, w:s, h:s }; updateROIs(); updateStats(); }
+  else if (drag && drag.type === 'pan' && e.type === 'pointerup' && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) {   // a tap: two quick taps zoom in, or back out
+    const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+    lastTap = dbl ? { t:0, x:0, y:0 } : { t:now, x:e.clientX, y:e.clientY };
+    if (dbl) { if (S.view.z > 1.05) { S.view = { z:1, tx:0, ty:0 }; applyView(); } else { const p = imgPoint(e); zoomAt(p.px, p.py, 2.5); } }
+  }
   drag = null;
 };
 stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
@@ -647,7 +704,7 @@ function fillPickers() {
   }
 }
 function chipsFor(which, scan, other) {
-  $('chips'+which).innerHTML = KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
+  $('chips'+which).innerHTML = `<div class="pname">${scanLabel(scan)}</div>` + KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
     + (scan.simulated ? '<div class="prow sim">Simulated image</div>' : '');
 }
 function buildExplain() {
@@ -702,7 +759,7 @@ function markSkull(l) {
   }
   for (const b of box.children) b.classList.toggle('on', +b.dataset.n === l.n);
   const pct = Math.round((l.n - 0.5) / SKULL.slices * 100);
-  $('skullCap').innerHTML = `The <b>teal line</b> is where <b>slice ${l.n}</b> cuts the skull (${l.name.toLowerCase()}), about ${pct}% of the way from the snout to the back. The round dot in every slice is the rod shown under the skull. Click any line to jump to that level.`;
+  $('skullCap').innerHTML = `The <b>teal line</b> is where <b>slice ${l.n}</b> cuts the skull (${l.name.toLowerCase()}), about ${pct}% of the way from the snout to the back. The round dot in every slice is the rod shown under the skull. Tap or click any line to jump to that level.`;
 }
 function update() {
   const b = currentScan(), a = scanById(S.ref);
@@ -724,9 +781,7 @@ function setTool(t) {
   S.tool = t;
   for (const [id,n] of [['toolPan','pan'],['toolR1','roi1'],['toolR2','roi2']]) $(id).classList.toggle('on', n === t);
   stage.style.cursor = t === 'pan' ? 'grab' : 'crosshair';
-  $('toolHint').textContent = t === 'pan'
-    ? 'Scroll to zoom, drag to pan. Both images move together so you can compare the same spot.'
-    : 'Click to drop a small measurement box, or drag to draw your own. The same spot is measured in both scans.';
+  updateHint(); syncLock();
 }
 function showFatal(msg) { const f = $('fatal'); f.style.display = 'block'; f.innerHTML = msg; $('loading').style.display = 'none'; }
 
@@ -749,6 +804,8 @@ async function init() {
   $('labelsBtn').onclick = () => { S.labels = !S.labels; $('labelsBtn').classList.toggle('on', S.labels); updateROIs(); };
   $('histBtn').onclick = () => { const on = !$('histBtn').classList.contains('on'); $('histBtn').classList.toggle('on', on); $('stage').classList.toggle('nohist', !on); if (on && dataA && dataB) requestAnimationFrame(drawHists); };
   $('zoomReset').onclick = () => { S.view = { z:1, tx:0, ty:0 }; applyView(); };
+  const zoomMid = f => { const pa = $('paneA'); zoomAt(pa.clientWidth/2, pa.clientHeight/2, f); };
+  $('zoomIn').onclick = () => zoomMid(1.5); $('zoomOut').onclick = () => zoomMid(1/1.5);
   fillPickers();
   $('selA').onchange = e => { S.ref = e.target.value; S.last = null; $('snap').textContent = ''; update(); };
   $('selB').onchange = e => { S.sel = { ...scanById(e.target.value).params }; S.last = null; $('snap').textContent = ''; update(); };
@@ -770,18 +827,14 @@ async function init() {
   const wrap = $('stageWrap');
   const sizeStage = () => wrap.style.setProperty('--h', Math.max(160, wrap.clientHeight - $('pickers').offsetHeight - 10) + 'px');
   const ro = new ResizeObserver(sizeStage); ro.observe(wrap); ro.observe($('pickers'));
-  setWL(0.69, 1.45, 60); setTool('pan'); setMode('side'); update();
+  const phone = window.matchMedia('(max-width: 700px)').matches;        // two images side by side are too small on a phone, so start with the wipe
+  if (phone) { $('histBtn').classList.remove('on'); $('stage').classList.add('nohist'); }   // keep a phone-sized image uncluttered; the Histograms button turns them on
+  setWL(0.69, 1.45, 60); setTool('pan'); setMode(phone ? 'wipe' : 'side'); update();
 }
-// Phones and tablets: ask people to use a computer. Shown for small or touch-first screens; "Continue anyway" dismisses it for the session.
-(function deviceNote() {
-  const note = document.getElementById('deviceNote'), key = 'ctExplorerDeviceNoteDismissed';
-  let dismissed = false; try { dismissed = sessionStorage.getItem(key) === '1'; } catch (e) {}
-  const mobile = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
-  if (!mobile || dismissed) return;
-  const close = () => { note.classList.remove('show'); try { sessionStorage.setItem(key, '1'); } catch (e) {} };
-  note.classList.add('show');
-  document.getElementById('deviceNoteOk').onclick = close;
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+// The credit banner wraps onto 2-3 lines on a phone; keep the page (and the pinned images) just below its real height.
+(function bannerHeight() {
+  const b = document.querySelector('.credit-banner'), set = () => document.documentElement.style.setProperty('--banner-h', b.offsetHeight + 'px');
+  set(); new ResizeObserver(set).observe(b);
 })();
 init();
 </script>
