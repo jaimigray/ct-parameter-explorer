@@ -97,6 +97,13 @@ button{font-family:inherit;color:inherit}
   .pchips .pname{display:block;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pchips .prow{display:none;}
 }
+/* in the wipe both labels share one image, so two full settings lists need about 480 px; below that use the small labels too */
+@container (max-width: 480px) {
+  #stage.wipe .pfoot{left:6px;right:6px;bottom:6px;}
+  #stage.wipe .pchips{min-width:0;padding:3px 7px;border-radius:5px;max-width:48%;}
+  #stage.wipe .pchips .pname{display:block;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #stage.wipe .pchips .prow{display:none;}
+}
 @container (max-width: 400px) { .phist canvas{width:110px;height:34px;} .hcap{display:none;} .phist{padding:5px 6px;} }
 @container (max-width: 260px) { .phist{display:none;} .pchips{max-width:100%;} .pchips .pname{font-size:9.5px;white-space:normal;} }
 .zgroup{display:none;}
