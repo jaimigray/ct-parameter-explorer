@@ -91,9 +91,14 @@ button{font-family:inherit;color:inherit}
 #stage.nohist .phist{display:none;}
 .pname{display:none;font-weight:600;font-size:11.5px;line-height:1.4;color:#ddd6f0;}
 /* narrow images (phones, small windows): the settings list shrinks to the scan's name and the histogram gets smaller */
-@container (max-width: 380px) { .pchips{min-width:0;padding:5px 9px;} .pchips .pname{display:block;} .pchips .prow{display:none;} }
+@container (max-width: 380px) {
+  .pfoot{left:6px;right:6px;bottom:6px;}
+  .pchips{min-width:0;padding:3px 7px;border-radius:5px;max-width:48%;}       /* each label stays under half the width, so A's and B's both fit side by side in the wipe */
+  .pchips .pname{display:block;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pchips .prow{display:none;}
+}
 @container (max-width: 400px) { .phist canvas{width:110px;height:34px;} .hcap{display:none;} .phist{padding:5px 6px;} }
-@container (max-width: 260px) { .phist{display:none;} .pname{font-size:10px;} }
+@container (max-width: 260px) { .phist{display:none;} .pchips{max-width:100%;} .pchips .pname{font-size:9.5px;white-space:normal;} }
 .zgroup{display:none;}
 .prow{display:flex;justify-content:space-between;gap:18px;color:#ddd6f0;}
 .prow .k{color:var(--muted)}
@@ -690,6 +695,10 @@ function scanLabel(s) {            // how a scan is named in the menus: what it 
   const base = scanById(MAN.baseline).params, d = KEYS.filter(k => s.params[k] !== base[k]);
   return d.length ? d.map(k => `${LABEL[k]} ${PARAMS[k].fmt(s.params[k])}`).join(' · ') : 'Baseline scan';
 }
+function shortLabel(s) {           // the same, in the short forms used for the small label on a narrow image (e.g. "200 kV · BH 0")
+  const base = scanById(MAN.baseline).params, d = KEYS.filter(k => s.params[k] !== base[k]);
+  return d.length ? d.map(k => SHORT[k](s.params[k])).join(' · ') : 'Baseline scan';
+}
 function fillPickers() {
   const real = SCANS.filter(s => !s.simulated), sim = SCANS.filter(s => s.simulated);
   for (const id of ['selA','selB']) {
@@ -704,7 +713,7 @@ function fillPickers() {
   }
 }
 function chipsFor(which, scan, other) {
-  $('chips'+which).innerHTML = `<div class="pname">${scanLabel(scan)}</div>` + KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
+  $('chips'+which).innerHTML = `<div class="pname">${shortLabel(scan)}</div>` + KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
     + (scan.simulated ? '<div class="prow sim">Simulated image</div>' : '');
 }
 function buildExplain() {
