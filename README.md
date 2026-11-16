@@ -1,5 +1,7 @@
 # CT Parameter Explorer
 
+**Live page: <https://jaimigray.github.io/ct-parameter-explorer/>**
+
 An interactive page that helps anatomy students see how CT scan settings change the image, using real scans of a raccoon (*Procyon lotor*) skull.
 
 > **Works on computers, tablets and phones.** On a phone the page opens in Wipe mode (drag the round handle to compare the two images), the images stay pinned at the top while you scroll through the levels and settings, and you can pinch or double-tap to zoom. A larger screen still gives the most room for the side-by-side view.
