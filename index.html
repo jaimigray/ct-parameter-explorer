@@ -720,7 +720,11 @@ function fillPickers() {
   }
 }
 function chipsFor(which, scan, other) {
-  $('chips'+which).innerHTML = `<div class="pname">${shortLabel(scan)}</div>` + KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
+  // the small label on a narrow image: the setting(s) that differ between the two images, each with this image's own value
+  // (e.g. "7200 views" on A and "112 views" on B); when nothing differs it falls back to how this scan differs from the baseline
+  const diff = KEYS.filter(k => scan.params[k] !== other[k]);
+  const name = diff.length ? diff.map(k => SHORT[k](scan.params[k])).join(' · ') : shortLabel(scan);
+  $('chips'+which).innerHTML = `<div class="pname">${name}</div>` + KEYS.map(k => `<div class="prow${scan.params[k] !== other[k] ? ' diff' : ''}"><span class="k">${LABEL[k]}</span><span class="v">${PARAMS[k].fmt(scan.params[k])}</span></div>`).join('')
     + (scan.simulated ? '<div class="prow sim">Simulated image</div>' : '');
 }
 function buildExplain() {
