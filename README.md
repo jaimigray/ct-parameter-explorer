@@ -2,7 +2,7 @@
 
 An interactive page that helps anatomy students see how CT scan settings change the image, using real scans of a raccoon (*Procyon lotor*) skull.
 
-> **Use a computer.** This tool is designed for a PC, Mac or laptop with a mouse and a large screen. It is not built for phones or tablets; visitors on those devices see a notice asking them to switch to a computer.
+> **Works on computers, tablets and phones.** On a phone the page opens in Wipe mode (drag the round handle to compare the two images), the images stay pinned at the top while you scroll through the levels and settings, and you can pinch or double-tap to zoom. A larger screen still gives the most room for the side-by-side view.
 
 Choose an anatomical level, then change a scan setting and compare the result against a reference scan, side by side or with a wipe slider. Zoom and pan are shared between the two images, and a measurement tool reports mean, noise (SD) and contrast-to-noise ratio for the same spot in both scans.
 
